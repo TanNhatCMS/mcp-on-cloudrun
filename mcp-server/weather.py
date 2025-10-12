@@ -2,8 +2,17 @@ from typing import Any
 import asyncio
 import httpx
 import os
+import logging
 from mcp.server.fastmcp import FastMCP
 
+# Configure logging based on environment
+if not os.getenv("PORT"):  # Local development
+    # Suppress noisy INFO logs during local development
+    logging.getLogger("mcp.server").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING) 
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    
 # Initialize FastMCP server
 mcp = FastMCP("weather")
 
@@ -49,7 +58,7 @@ async def get_current_weather(city: str) -> str:
     """Get current weather conditions for a city.
 
     Args:
-        city: City name (e.g., "Sydney", "Melbourne", "Perth", "Brisbane")
+        city: City name (e.g., "Sydney", "Melbourne", "Perth", "Brisbane", "Canberra")
     """
     params = {
         "q": city,
@@ -142,7 +151,11 @@ if __name__ == "__main__":
     import uvicorn
     
     # Check if PORT environment variable is set (Cloud Run) or if explicitly run standalone
-    if os.getenv("PORT") or (len(sys.argv) == 1 and not sys.stdin.isatty()):
+    # but NOT when run as MCP subprocess (which has sys.argv == 1 but should use stdio)
+    is_cloud_run = bool(os.getenv("PORT"))
+    is_standalone = len(sys.argv) == 1 and sys.stdin.isatty()  # Interactive terminal
+    
+    if is_cloud_run or is_standalone:
         # HTTP mode for Cloud Run or standalone server
         print("Starting FastMCP server in HTTP mode for Cloud Run")
         port = int(os.getenv("PORT", 8080))

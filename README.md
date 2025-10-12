@@ -64,9 +64,9 @@ uv run python client.py https://weather-mcp-server-583791017886.asia-southeast1.
 
 ```
 Query: What's the weather in Brisbane?
-Query: Give me a 5-day forecast for Tokyo
+Query: Give me a 5-day forecast for Canberra
 Query: Compare weather between Sydney and Melbourne
-Query: Is it going to rain in London tomorrow?
+Query: Is it going to rain in Brisbane tomorrow?
 ```
 
 ## 🏗️ Architecture
@@ -75,7 +75,7 @@ Query: Is it going to rain in London tomorrow?
 graph LR
     A[User Query] --> B[Gemini 2.5 Flash]
     B --> C[MCP Client]
-    C --> D[Cloud Run MCP Server]
+    C --> D[MCP Server on Google Cloud Run]
     D --> E[WeatherAPI.com]
     E --> D
     D --> C
@@ -195,7 +195,7 @@ gcloud secrets describe weatherapi-key
 gcloud secrets versions list weatherapi-key
 ```
 
-## 🎭 Usage Examples
+## Usage Examples
 
 ### Natural Language Queries
 ```
@@ -251,7 +251,7 @@ gcloud secrets versions list weatherapi-key
 - 🌐 **HTTPS Only**: End-to-end encryption
 - 🚫 **No Exposed Keys**: No credentials in code or logs
 
-## 🧪 Testing
+## Testing
 
 ### Test Server Health
 ```bash
@@ -274,39 +274,11 @@ asyncio.run(test())
 "
 ```
 
-## 🚀 Next Steps & Extensions
-
-### Add More Tools
-- 💱 Currency conversion
-- 📰 News headlines  
-- 🧮 Calculator functions
-- 📍 Location services
-
-### Enhance Client
-- 🎨 Web UI interface
-- 💬 Chat history
-- 🎙️ Voice input
-- 📱 Mobile app
-
-### Scale Server
-- 🌐 Multiple regions
-- 📊 Analytics & monitoring
-- 🔄 Rate limiting
-- 👥 User authentication
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **Google Gemini**: For powerful AI capabilities
 - **WeatherAPI.com**: For reliable weather data
@@ -317,5 +289,3 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ---
 
 **Built with ❤️ using Gemini 2.5 Flash, MCP Protocol, and Google Cloud**
-
-*Ready to build AI assistants with real-world capabilities!* 🚀

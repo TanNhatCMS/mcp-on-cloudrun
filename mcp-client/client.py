@@ -1,4 +1,13 @@
+# Set environment variables BEFORE any imports to suppress gRPC warnings
+import os
+os.environ['GRPC_VERBOSITY'] = 'ERROR'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['GLOG_minloglevel'] = '2'
+os.environ['GRPC_TRACE'] = ''
+os.environ['GRPC_VERBOSITY'] = 'NONE'
+
 import asyncio
+import logging
 from typing import Optional
 from contextlib import AsyncExitStack
 
@@ -6,10 +15,27 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from fastmcp import Client as FastMCPClient
 
-import google.generativeai as genai
+# Temporarily redirect stderr to suppress initialization warnings
+import sys
+from contextlib import redirect_stderr
+from io import StringIO
+
+# Capture and suppress initialization warnings
+stderr_capture = StringIO()
+with redirect_stderr(stderr_capture):
+    import google.generativeai as genai
+
 from dotenv import load_dotenv
 
 load_dotenv()  # load environment variables from .env
+
+# Suppress absl logging warnings
+logging.getLogger('absl').setLevel(logging.ERROR)
+
+# Additional suppression for Google AI warnings
+import warnings
+warnings.filterwarnings("ignore", message=".*ALTS.*")
+warnings.filterwarnings("ignore", message=".*absl.*")
 
 class MCPClient:
     def __init__(self):
@@ -19,8 +45,11 @@ class MCPClient:
         self.exit_stack = AsyncExitStack()
         self.is_remote = False
         # Configure Gemini - API key should be in GOOGLE_API_KEY environment variable
-        genai.configure()
-        self.model = genai.GenerativeModel('gemini-2.5-flash')
+        # Suppress any warnings during configuration
+        stderr_capture = StringIO()
+        with redirect_stderr(stderr_capture):
+            genai.configure()
+            self.model = genai.GenerativeModel('gemini-2.5-flash')
 
     async def connect_to_server(self, server_endpoint: str):
         """Connect to an MCP server
@@ -56,7 +85,7 @@ class MCPClient:
             server_params = StdioServerParameters(
                 command=command,
                 args=[server_endpoint],
-                env=None
+                env=dict(os.environ)  # Pass through current environment variables
             )
             
             stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
@@ -128,17 +157,20 @@ class MCPClient:
 
         # Configure the model with tools
         model_with_tools = genai.GenerativeModel(
-            'gemini-2.0-flash-exp',
+            'gemini-2.5-flash',
             tools=tools_for_gemini if tools_for_gemini else None
         )
         
-        response = model_with_tools.generate_content(
-            messages[0]["content"],
-            generation_config=genai.GenerationConfig(
-                max_output_tokens=1000,
-                temperature=0.1
+        # Suppress warnings during Gemini API calls
+        stderr_capture = StringIO()
+        with redirect_stderr(stderr_capture):
+            response = model_with_tools.generate_content(
+                messages[0]["content"],
+                generation_config=genai.GenerationConfig(
+                    max_output_tokens=1000,
+                    temperature=0.1
+                )
             )
-        )
 
         # Process response and handle tool calls
         final_text = []
@@ -158,20 +190,23 @@ class MCPClient:
                     final_text.append(f"[Calling tool {tool_name} with args {tool_args}]")
 
                     # Create follow-up conversation with tool results
-                    chat = model_with_tools.start_chat()
-                    # Add the original query
-                    chat.send_message(messages[0]["content"])
-                    
-                    # Add function response
-                    function_response = genai.protos.Part(
-                        function_response=genai.protos.FunctionResponse(
-                            name=tool_name,
-                            response={"result": str(result.content)}
+                    # Suppress warnings during chat interactions
+                    stderr_capture = StringIO()
+                    with redirect_stderr(stderr_capture):
+                        chat = model_with_tools.start_chat()
+                        # Add the original query
+                        chat.send_message(messages[0]["content"])
+                        
+                        # Add function response
+                        function_response = genai.protos.Part(
+                            function_response=genai.protos.FunctionResponse(
+                                name=tool_name,
+                                response={"result": str(result.content)}
+                            )
                         )
-                    )
-                    
-                    # Get next response from Gemini with function results
-                    follow_up_response = chat.send_message([function_response])
+                        
+                        # Get next response from Gemini with function results
+                        follow_up_response = chat.send_message([function_response])
                     
                     if follow_up_response.text:
                         final_text.append(follow_up_response.text)
