@@ -143,8 +143,164 @@ async def health_check() -> str:
     """Health check endpoint for deployment verification."""
     return "✅ Weather MCP Server is running! Ready to provide weather data for Australian cities and worldwide."
 
-# Expose the ASGI app for gunicorn/Cloud Run
-app = mcp.streamable_http_app
+# For Cloud Run, we need to create a custom app with proper MCP endpoints
+# FastMCP's streamable_http_app() doesn't expose routes correctly for remote access
+from starlette.applications import Starlette
+from starlette.routing import Route, Mount
+from starlette.responses import JSONResponse, StreamingResponse
+import json
+
+async def mcp_handler(request):
+    """Handle MCP protocol requests"""
+    try:
+        # Get the request body
+        body = await request.body()
+        data = json.loads(body)
+        
+        method = data.get("method")
+        params = data.get("params", {})
+        request_id = data.get("id")
+        
+        # Handle initialize
+        if method == "initialize":
+            response = {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {
+                        "tools": {}
+                    },
+                    "serverInfo": {
+                        "name": "weather",
+                        "version": "1.0.0"
+                    }
+                }
+            }
+            return JSONResponse(response)
+        
+        # Handle tools/list
+        elif method == "tools/list":
+            response = {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "tools": [
+                        {
+                            "name": "get_current_weather",
+                            "description": "Get current weather conditions for a city.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "city": {
+                                        "type": "string",
+                                        "description": "City name"
+                                    }
+                                },
+                                "required": ["city"]
+                            }
+                        },
+                        {
+                            "name": "get_forecast",
+                            "description": "Get weather forecast for a city.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {
+                                    "city": {
+                                        "type": "string",
+                                        "description": "City name"
+                                    },
+                                    "days": {
+                                        "type": "integer",
+                                        "description": "Number of days (1-3)",
+                                        "default": 3
+                                    }
+                                },
+                                "required": ["city"]
+                            }
+                        },
+                        {
+                            "name": "health_check",
+                            "description": "Health check endpoint for deployment verification.",
+                            "inputSchema": {
+                                "type": "object",
+                                "properties": {}
+                            }
+                        }
+                    ]
+                }
+            }
+            return JSONResponse(response)
+        
+        # Handle tools/call
+        elif method == "tools/call":
+            tool_name = params.get("name")
+            arguments = params.get("arguments", {})
+            
+            result = None
+            if tool_name == "get_current_weather":
+                result = await get_current_weather(arguments.get("city"))
+            elif tool_name == "get_forecast":
+                result = await get_forecast(
+                    arguments.get("city"),
+                    arguments.get("days", 3)
+                )
+            elif tool_name == "health_check":
+                result = await health_check()
+            else:
+                return JSONResponse({
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "error": {
+                        "code": -32601,
+                        "message": f"Tool not found: {tool_name}"
+                    }
+                }, status_code=404)
+            
+            response = {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": result
+                        }
+                    ]
+                }
+            }
+            return JSONResponse(response)
+        
+        else:
+            return JSONResponse({
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "error": {
+                    "code": -32601,
+                    "message": f"Method not found: {method}"
+                }
+            }, status_code=404)
+            
+    except Exception as e:
+        return JSONResponse({
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32603,
+                "message": f"Internal error: {str(e)}"
+            }
+        }, status_code=500)
+
+# Create Starlette app with MCP endpoint
+app = Starlette(
+    routes=[
+        Route('/', mcp_handler, methods=['POST']),
+        Route('/sse', mcp_handler, methods=['POST']),
+    ]
+)
+
+print("✅ Custom MCP server initialized with HTTP endpoints")
+print("🔧 Available tools: get_current_weather, get_forecast, health_check")
+print("📡 Endpoints: / and /sse")
 
 if __name__ == "__main__":
     import sys
@@ -157,13 +313,13 @@ if __name__ == "__main__":
     
     if is_cloud_run or is_standalone:
         # HTTP mode for Cloud Run or standalone server
-        print("Starting FastMCP server in HTTP mode for Cloud Run")
+        print("🚀 Starting FastMCP server in HTTP mode for Cloud Run")
         port = int(os.getenv("PORT", 8080))
         uvicorn.run(
-            mcp.streamable_http_app,
+            app,
             host="0.0.0.0",
             port=port,
-            access_log=False
+            log_level="info"
         )
     else:
         # Stdio mode for local MCP client connections

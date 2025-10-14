@@ -1,20 +1,21 @@
-# Gemini MCP Weather System ⚡🌤️
+# AI Weather Agent with Google ADK + Remote MCP on Cloud Run ⚡🌤️
 
-A complete **Model Context Protocol (MCP)** system featuring a **Gemini 2.5 Flash** client and weather server deployed on **Google Cloud Run**. This demonstrates modern AI tool calling with real-time weather data integration.
+A production-ready **AI agent** built with **Google Agent Development Kit (ADK)** that connects to **remote MCP tools deployed on Google Cloud Run**. This demonstrates modern AI agent architecture with remote tool execution over the internet.
 
 ## 🚀 What You Built
 
 This system consists of two main components:
-- **🤖 MCP Client**: Gemini 2.5 Flash powered client with tool calling capabilities
-- **🌐 MCP Server**: FastMCP weather server deployed on Google Cloud Run
+- **🤖 ADK Agent**: AI agent built with Google ADK, featuring a web UI and connecting to remote MCP server
+- **🌐 MCP Server**: FastMCP weather server with custom HTTP endpoints deployed on Google Cloud Run
 
 ## ✨ Features
 
-### 🔥 **Gemini 2.5 Flash Integration**
-- Intelligent natural language queries
-- Automatic tool selection and parameter extraction
-- Function calling with MCP protocol
-- Hybrid connection support (local + remote servers)
+### 🔥 **Google ADK Integration**
+- Professional web UI at localhost:8000
+- Real-time streaming responses
+- Agent built with Google Agent Development Kit
+- Gemini 2.5 Flash for intelligent reasoning
+- Remote MCP tool execution over HTTPS
 
 ### 🌤️ **Weather Capabilities**
 - Real-time weather data for any city worldwide
@@ -47,75 +48,126 @@ https://weather-mcp-server-583791017886.asia-southeast1.run.app
 
 ### Prerequisites
 
-1. **Google API Key**: Get from [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. **Python 3.12+**: Required for both client and server
+1. **Google API Key**: Get from [Google AI Studio](https://aistudio.google.com/apikey)
+2. **Python 3.12+**: Required for both agent and server
 3. **uv**: Python package manager (`pip install uv`)
 
-### Run the Client
+### Run the ADK Agent
 
 ```bash
-# Connect to your deployed Cloud Run server
+# Set up environment
 cd mcp-client
-export GOOGLE_API_KEY="your_gemini_api_key_here"
-uv run python client.py https://weather-mcp-server-583791017886.asia-southeast1.run.app
+echo "GOOGLE_API_KEY=your_gemini_api_key_here" > .env
+
+# Install dependencies
+uv sync
+
+# Start the ADK web interface
+uv run adk web
+
+# Or use the quick start script
+./start_agent.sh
 ```
+
+### Open the Web Interface
+
+1. Navigate to `http://localhost:8000` in your browser
+2. Select `weather_agent` from the dropdown
+3. Start chatting!
 
 ### Example Queries
 
 ```
-Query: What's the weather in Brisbane?
-Query: Give me a 5-day forecast for Canberra
-Query: Compare weather between Sydney and Melbourne
-Query: Is it going to rain in Brisbane tomorrow?
+What's the weather in Brisbane?
+Give me a 3-day forecast for Tokyo
+Compare weather between Sydney and Melbourne
+Will I need an umbrella in London tomorrow?
 ```
 
 ## 🏗️ Architecture
 
 ```mermaid
-graph LR
-    A[User Query] --> B[Gemini 2.5 Flash]
-    B --> C[MCP Client]
-    C --> D[MCP Server on Google Cloud Run]
-    D --> E[WeatherAPI.com]
+graph TB
+    A[User Browser<br/>localhost:8000] --> B[ADK Web UI<br/>Google ADK]
+    B --> C[Weather Agent<br/>Gemini 2.5 Flash + MCP Toolset]
+    C --> |HTTPS/MCP Protocol| D[MCP Server<br/>Cloud Run]
+    D --> E[Weather Tools<br/>3 Functions]
+    E --> F[WeatherAPI.com]
+    F --> E
     E --> D
     D --> C
     C --> B
-    B --> F[Natural Response]
+    B --> A
+    
+    style A fill:#e1f5ff
+    style B fill:#fff3cd
+    style C fill:#d4edda
+    style D fill:#cce5ff
+    style E fill:#f8d7da
+    style F fill:#d1ecf1
 ```
+
+**Key Components:**
+- **Browser UI**: ADK Web interface at localhost:8000
+- **Google ADK**: Agent framework with web UI and streaming
+- **MCP Toolset**: Connects to remote MCP server via HTTP
+- **Cloud Run**: Serverless deployment, auto-scaling
+- **Custom HTTP Endpoints**: MCP protocol over HTTPS
 
 ## 📦 Project Structure
 
 ```
 mcp-on-cloudrun/
-├── mcp-client/              # Gemini MCP Client
-│   ├── client.py           # Main client application
-│   ├── pyproject.toml      # Client dependencies
-│   └── README.md           # Client documentation
-├── mcp-server/             # Weather MCP Server
-│   ├── weather.py          # FastMCP server
-│   ├── app.py             # ASGI app wrapper
-│   ├── Dockerfile         # Container configuration
-│   ├── deploy.sh          # Deployment script
-│   └── pyproject.toml     # Server dependencies
-└── README.md              # This file
+├── mcp-client/                    # ADK Agent
+│   ├── weather_agent/            # Agent package (discovered by ADK)
+│   │   ├── agent.py             # Main agent with remote MCP connection
+│   │   └── __init__.py          # Package exports
+│   ├── start_agent.sh           # Quick start script
+│   ├── verify_setup.py          # Setup verification
+│   ├── pyproject.toml           # Dependencies (google-adk, etc.)
+│   ├── .env                     # Environment variables (create this!)
+│   └── README.md                # Client documentation
+│
+├── mcp-server/                   # Weather MCP Server
+│   ├── weather.py               # FastMCP server + custom HTTP endpoints
+│   ├── Dockerfile               # Container configuration
+│   ├── deploy.sh                # Cloud Run deployment script
+│   └── pyproject.toml           # Server dependencies (fastmcp, starlette)
+│
+├── README.md                     # This file
+├── SETUP_GUIDE.md               # Complete setup instructions
+├── SUCCESS.md                   # Success documentation
+└── presentation.md              # Presentation outline
 ```
 
 ## 🔧 Local Development
 
-### Server Development
+### Server Development (Local Testing)
 
 ```bash
 cd mcp-server
 export WEATHERAPI_KEY="your_weatherapi_key"
 uv run python weather.py
+
+# Server will start on http://localhost:8080
+# You can test MCP endpoints directly
 ```
 
-### Client Development (Local Server)
+### Agent Development (ADK)
 
 ```bash
 cd mcp-client
-export GOOGLE_API_KEY="your_gemini_api_key"
-uv run python client.py ../mcp-server/weather.py
+
+# Create .env file
+echo "GOOGLE_API_KEY=your_gemini_api_key" > .env
+
+# Install dependencies
+uv sync
+
+# Start ADK web interface
+uv run adk web
+
+# Agent will be available at http://localhost:8000
 ```
 
 ## ☁️ Cloud Deployment
@@ -216,14 +268,16 @@ gcloud secrets versions list weatherapi-key
 
 ## 🔍 How It Works
 
-1. **User Input**: You type a natural language weather query
-2. **AI Processing**: Gemini 2.5 Flash understands your intent
-3. **Tool Selection**: AI chooses the right weather tool
-4. **Parameter Extraction**: City names and options are extracted
-5. **MCP Call**: Client makes tool call to Cloud Run server
-6. **API Request**: Server fetches data from WeatherAPI.com
-7. **Response**: Real-time weather data returned via MCP
-8. **Natural Output**: Gemini formats response in natural language
+1. **User Input**: You type a natural language weather query in the ADK web interface
+2. **ADK Agent**: Routes query to Gemini 2.5 Flash via Google ADK
+3. **AI Processing**: Gemini understands your intent and available MCP tools
+4. **Tool Selection**: Gemini chooses the right weather tool (get_current_weather or get_forecast)
+5. **Parameter Extraction**: City names and options are automatically extracted
+6. **Remote MCP Call**: ADK agent makes HTTPS call to Cloud Run MCP server
+7. **Tool Execution**: MCP server executes the tool and calls WeatherAPI.com
+8. **Response Flow**: Weather data flows back through MCP protocol to ADK agent
+9. **AI Formatting**: Gemini formats response in natural language
+10. **Streaming Display**: Response streams back to your browser in real-time
 
 ## 📊 API Limits & Costs
 

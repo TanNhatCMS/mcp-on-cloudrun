@@ -14,8 +14,9 @@
 
 ### **Slide 1: Title Slide**
 - **Title:** From Idea to Global AI Assistant in Minutes
-- **Subtitle:** Building with Gemini 2.5 Flash, MCP, and Google Cloud Run
-- **Visual:** A striking graphic combining the Gemini, Google Cloud, and a weather icon.
+- **Subtitle:** Building with Google ADK, MCP, and Cloud Run
+- **Visual:** A striking graphic combining Google ADK, Gemini, Google Cloud, and a weather icon.
+- **Tagline:** "Professional AI agents with remote tools - in just a few lines of code"
 - **Presenter:** Your Name/Handle
 
 ### **Slide 2: The "Aha!" Moment (The Problem)**
@@ -30,33 +31,35 @@
 
 ### **Slide 3: The Modern AI Stack (The Solution)**
 - **Title:** The Game-Changing Stack for AI Development
-- **Visual:** A clean diagram showing the 4 core components.
-- **1. The Brain:** **Gemini 2.5 Flash** (for intelligent understanding)
-- **2. The Protocol:** **MCP** (Model Context Protocol - the universal language for AI tools)
-- **3. The Framework:** **FastMCP** (for rapid, clean development)
-- **4. The Engine:** **Google Cloud Run** (for instant, global scale)
+- **Visual:** A clean diagram showing the 5 core components.
+- **1. The Agent Framework:** **Google ADK** (Agent Development Kit - for building AI agents with web UI)
+- **2. The Brain:** **Gemini 2.5 Flash** (for intelligent understanding)
+- **3. The Protocol:** **MCP** (Model Context Protocol - the universal language for AI tools)
+- **4. The Server Framework:** **FastMCP** (for rapid MCP server development)
+- **5. The Engine:** **Google Cloud Run** (for instant, global scale)
 - **Key Takeaway:** This stack lets us focus on *what* to build, not *how*.
 
 ### **Slide 4: Live Demo Warm-Up**
 - **Title:** Let's See It in Action
-- **Action:** Open your terminal.
+- **Action:** Open your browser and terminal.
 - **Command:**
   ```bash
   cd mcp-client
-  uv run python client.py https://weather-mcp-server-583791017886.asia-southeast1.run.app
+  uv run adk web
   ```
-- **Explain:** "I'm connecting my local AI client, powered by Gemini, to a live server running on Google Cloud. Let's ask it something..."
+- **Action:** Navigate to `http://localhost:8000`
+- **Explain:** "I'm launching an AI agent built with Google's Agent Development Kit (ADK). It connects to our live MCP server running on Cloud Run. The agent has a beautiful web interface powered by Gemini. Let's ask it something..."
 
 ### **Slide 5: 💥 LIVE DEMO 💥**
 - **Title:** Natural Language → Real-World Action
-- **Action:** Type queries into your live client.
+- **Action:** In the web interface at `localhost:8000`, select `weather_agent` from the dropdown
 - **Query 1 (Simple):** `What's the weather in Brisbane?`
-    - **Narrate:** "Notice how Gemini understood the query, selected the `get_current_weather` tool, and extracted 'Brisbane' as a parameter."
+    - **Narrate:** "Notice how the ADK agent, powered by Gemini, understood the query, selected the `get_current_weather` tool from our remote MCP server, and extracted 'Brisbane' as a parameter. Watch the streaming response!"
 - **Query 2 (Complex):** `Give me a 3-day forecast for Tokyo.`
-    - **Narrate:** "Now it's choosing a different tool, `get_forecast`, and handling multiple parameters."
+    - **Narrate:** "Now it's choosing a different tool, `get_forecast`, making a secure HTTPS call to our Cloud Run MCP server, and formatting the multi-day results."
 - **Query 3 (Conversational):** `Will I need an umbrella in London tomorrow?`
-    - **Narrate:** "This is the magic. Gemini infers the need for a forecast and interprets the result for a yes/no answer."
-- **Punchline:** We just used a globally deployed AI assistant with live data. Now, let's see how we built it.
+    - **Narrate:** "This is the magic of ADK. Gemini infers the need for a forecast, calls the remote tool, and interprets the result for a natural yes/no answer."
+- **Punchline:** We just used a Google ADK agent with remote MCP tools on Cloud Run - all through a beautiful web interface. Now, let's see how we built it.
 
 ### **Slide 6: The "Magic" of FastMCP (The Framework)**
 - **Title:** FastMCP: 95% Less Boilerplate, 100% More Fun
@@ -92,33 +95,51 @@
 
 ### **Slide 9: The Code That Makes It Possible**
 - **Title:** The Two Key Snippets
-- **Snippet 1 (`weather.py` - The Server):**
+- **Snippet 1 (`weather.py` - The MCP Server):**
   ```python
-  # The magic of dual-mode transport
-  if os.getenv("PORT"): # Cloud Run environment
-      # HTTP Mode for production
-      uvicorn.run(mcp.streamable_http_app, host="0.0.0.0", port=port)
-  else:
-      # Stdio Mode for local development
-      mcp.run()
+  from mcp.server.fastmcp import FastMCP
+  
+  mcp = FastMCP("weather")
+  
+  @mcp.tool()
+  async def get_current_weather(city: str) -> str:
+      """Get current weather conditions for a city."""
+      # Business logic here...
+      return weather_data
+  
+  # Custom HTTP endpoints for Cloud Run
+  app = Starlette(routes=[
+      Route('/', mcp_handler, methods=['POST']),
+  ])
   ```
-- **Snippet 2 (`client.py` - The Client):**
+- **Snippet 2 (`agent.py` - The ADK Agent):**
   ```python
-  # The magic of hybrid connection
-  if server_endpoint.startswith('http'):
-      # Remote server? Use the HTTP client.
-      self.fastmcp_client = FastMCPClient(mcp_url)
-  else:
-      # Local file? Use the stdio client.
-      server_params = StdioServerParameters(...)
+  from google.adk import Agent
+  from google.adk.tools.mcp_tool.mcp_toolset import McpToolset, StreamableHTTPConnectionParams
+  
+  # Connect to remote MCP server
+  connection_params = StreamableHTTPConnectionParams(
+      url="https://weather-mcp-server-583791017886.asia-southeast1.run.app",
+      timeout=30.0,
+  )
+  
+  weather_tools = McpToolset(connection_params=connection_params)
+  
+  # Create agent with remote tools
+  root_agent = Agent(
+      name="weather_agent",
+      model="gemini-2.5-flash",
+      tools=[weather_tools],
+  )
   ```
 
 ### **Slide 10: The Developer Experience**
 - **Title:** The "It Just Works" Workflow
-- **1. Code Locally:** Run the client against the local file. Get instant feedback with no noise.
-- **2. Deploy Instantly:** Run `./deploy.sh`. Your code is live globally in under 2 minutes.
-- **3. Test Production:** Change one line in the client command to point to the URL. Everything works.
-- **Punchline:** This is the future of building AI applications: fast, seamless, and powerful.
+- **1. Build Agent:** Create your agent in `weather_agent/agent.py` - just point it to your MCP server URL
+- **2. Deploy Server:** Run `./deploy.sh` in `mcp-server/`. Your MCP tools are live globally in under 2 minutes.
+- **3. Launch & Test:** Run `uv run adk web` - get a beautiful web UI at localhost:8000 instantly
+- **4. Production Ready:** The same agent code works with local or remote MCP servers. No changes needed.
+- **Punchline:** This is the future of building AI applications: ADK for agents, MCP for tools, Cloud Run for scale.
 
 ### **Slide 11: Conclusion & What's Next**
 - **Title:** You Can Build This Today!
@@ -224,30 +245,36 @@ Of course! That abstract is excellent. It tells a clear, compelling story. Here 
 ### **Slide 8: The Grand Finale: Talking to the Serverless Brain**
 - **Title:** Live Interaction with a Global AI Agent
 - **Action:** Switch to the `mcp-client` terminal.
-- **Run the Client, Connecting to the Live URL:**
+- **Launch the ADK Agent:**
   ```bash
-  uv run python client.py https://weather-mcp-server-583791017886.asia-southeast1.run.app
+  cd mcp-client
+  uv run adk web
   ```
+- **Action:** Open browser at `http://localhost:8000` and select `weather_agent`
 - **Perform the Live Queries:**
     - `What's the weather in Brisbane?`
     - `Give me a 3-day forecast for Tokyo.`
-- **Narrate the Magic:** "We are now talking to Gemini. Gemini is deciding which tool to use. It's making a secure call over the internet to our Cloud Run server. That server is scaling up from zero, executing the tool, and scaling back down, and we're getting a live answer. **This is the 'serverless brain' in action.**"
+- **Narrate the Magic:** "We're using Google's Agent Development Kit with a beautiful web interface. The ADK agent is talking to Gemini. Gemini is deciding which tool to use from our remote MCP server. It's making a secure HTTPS call over the internet to our Cloud Run server. That server is scaling up from zero, executing the tool, and scaling back down. The response flows back through MCP, and Gemini formats it naturally. **This is the 'serverless brain' in action - with Google ADK powering the agent layer.**"
 
 ### **Slide 9: The Winning Formula**
 - **Title:** The Architecture of an Effortless AI Agent
 - **Visual:** The Mermaid diagram from the README.
 - **The Formula:**
-    - **LLM (Gemini):** The core intelligence and reasoning engine.
+    - **Google ADK (The Agent Framework):** Beautiful web UI, streaming responses, agent orchestration.
+    - **Gemini 2.5 Flash (The Brain):** The core intelligence and reasoning engine.
     - **MCP (The Standard):** The reliable bridge between the AI and its tools.
+    - **FastMCP (The Server Framework):** Rapid development with `@mcp.tool()` decorators.
     - **Cloud Run (The Host):** The infinitely scalable, zero-maintenance, cost-effective home for the tools.
 - **Key Takeaway:** "This allows you to focus on creating intelligent applications without managing infrastructure." (The final line of your abstract!)
 
 ### **Slide 10: Your Turn to Build!**
 - **Title:** You Have the Blueprint
 - **Recap the Stack:**
-    - **Choose your LLM:** Gemini, Claude, etc.
-    - **Build with MCP:** Use a framework like FastMCP.
-    - **Deploy on Cloud Run:** For effortless scale.
+    - **Build Agents with Google ADK:** Get a professional web UI out of the box
+    - **Choose your LLM:** Gemini 2.5 Flash (or other models)
+    - **Create Tools with FastMCP:** Use simple `@mcp.tool()` decorators
+    - **Deploy on Cloud Run:** For effortless, serverless scale
+    - **Connect with MCP:** Your agents can use any MCP-compatible tools
 - **Call to Action:** What "Serverless Brain" will you build? A code assistant? A research agent? A personal finance tool?
 - **Resource:** Link to your GitHub repository.
 
