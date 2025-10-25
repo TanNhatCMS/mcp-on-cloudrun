@@ -69,17 +69,13 @@ fi
 
 # Build and deploy to Cloud Run
 echo -e "${YELLOW}🚀 Building and deploying to Cloud Run...${NC}"
-gcloud run deploy $SERVICE_NAME \
+gcloud run deploy mcp-server \
     --source . \
     --platform managed \
-    --region $REGION \
+    --region asia-southeast1 \
     --allow-unauthenticated \
-    --set-secrets WEATHERAPI_KEY=$SECRET_NAME:latest \
-    --port 8080 \
-    --memory 512Mi \
-    --cpu 1 \
-    --max-instances 10 \
-    --timeout 300
+    --set-secrets WEATHERAPI_KEY=weatherapi-key:latest \
+    --port 8080
 
 # Get service URL
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME --region $REGION --format 'value(status.url)')
